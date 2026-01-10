@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>位置ゲーム②テスト</title>
+<style>
+  body {
+    font-family: sans-serif;
+    text-align: center;
+    padding: 20px;
+  }
+</style>
+</head>
+<body>
+
+<h2>マーカー距離テスト</h2>
+<button onclick="startGame()">ゲーム開始</button>
+
+<p id="status">未開始</p>
+<p id="dist">距離: -</p>
+
+<script>
+let targetPos = null;
+let currentPos = null;
+let watchId = null;
+
+// ゲーム開始
+function startGame() {
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+
+    targetPos = generateTarget(lat, lon);
+    document.getElementById("status").textContent =
+      "マーカー生成完了";
+
+    startWatch();
+  }, () => {
+    alert("位置情報が取得できないよ");
+  });
+}
+
+// 位置を定期取得
+function startWatch() {
+  watchId = navigator.geolocation.watchPosition((pos) => {
+    currentPos = {
+      lat: pos.coords.latitude,
+      lon: pos.coords.longitude
+    };
+
+    const d = calcDistance(
+      currentPos.lat,
+      currentPos.lon,
+      targetPos.lat,
+      targetPos.lon
+    );
+
+    document.getElementById("dist").textContent =
+      "距離: " + Math.round(d) + " m";
+  });
+}
+
+// 300〜600m先にマーカー生成
+function generateTarget(lat, lon) {
+  const distance = 300 + Math.random() * 300; // m
+  const angle = Math.random() * 2 * Math.PI;
+
+  const dLat = distance * Math.cos(angle) / 111000;
+  const dLon = distance * Math.sin(angle) /
+    (111000 * Math.cos(lat * Math.PI / 180));
+
+  return {
+    lat: lat + dLat,
+    lon: lon + dLon
+  };
+}
+
+// 距離計算（ハーバサイン）
+function calcDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+</script>
+
+</body>
+</html>
