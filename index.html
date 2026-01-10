@@ -2,67 +2,153 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>位置ゲーム②テスト</title>
+<title>コンパス探索ゲーム</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
   body {
     font-family: sans-serif;
     text-align: center;
     padding: 20px;
   }
+  button {
+    font-size: 16px;
+    padding: 10px 20px;
+  }
+  #compass {
+    width: 220px;
+    height: 220px;
+    border: 3px solid black;
+    border-radius: 50%;
+    margin: 30px auto;
+    position: relative;
+  }
+  #arrow {
+    font-size: 70px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: center;
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  #distance {
+    font-size: 18px;
+  }
 </style>
 </head>
 <body>
 
-<h2>マーカー距離テスト</h2>
-<button onclick="startGame()">ゲーム開始</button>
+<h2>コンパス探索ゲーム</h2>
+<button onclick="startGame()">スタート</button>
 
 <p id="status">未開始</p>
-<p id="dist">距離: -</p>
+
+<div id="compass">
+  <div id="arrow">▲</div>
+</div>
+
+<p id="distance">距離: - m</p>
 
 <script>
 let targetPos = null;
 let currentPos = null;
+let deviceHeading = 0;
 let watchId = null;
 
-// ゲーム開始
+// ---------- スタート ----------
 function startGame() {
-  navigator.geolocation.getCurrentPosition((pos) => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
+  document.getElementById("status").textContent = "スタート押下";
 
-    targetPos = generateTarget(lat, lon);
-    document.getElementById("status").textContent =
-      "マーカー生成完了";
+  requestOrientation();
 
-    startWatch();
-  }, () => {
-    alert("位置情報が取得できないよ");
-  });
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      document.getElementById("status").textContent =
+        "現在地取得OK";
+
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      targetPos = generateTarget(lat, lon);
+
+      document.getElementById("status").textContent =
+        "マーカー生成完了";
+
+      startWatch();
+    },
+    (err) => {
+      document.getElementById("status").textContent =
+        "位置情報エラー: " + err.message;
+    },
+    { enableHighAccuracy: true }
+  );
 }
 
-// 位置を定期取得
+// ---------- コンパス許可 ----------
+function requestOrientation() {
+  if (
+    typeof DeviceOrientationEvent !== "undefined" &&
+    typeof DeviceOrientationEvent.requestPermission === "function"
+  ) {
+    DeviceOrientationEvent.requestPermission()
+      .then(res => {
+        if (res === "granted") {
+          window.addEventListener("deviceorientation", handleOrientation);
+        }
+      });
+  } else {
+    window.addEventListener("deviceorientation", handleOrientation);
+  }
+}
+
+// ---------- 向き取得 ----------
+function handleOrientation(e) {
+  if (e.webkitCompassHeading !== undefined) {
+    deviceHeading = e.webkitCompassHeading;
+  } else if (e.alpha !== null) {
+    deviceHeading = 360 - e.alpha;
+  }
+}
+
+// ---------- 位置追跡 ----------
 function startWatch() {
-  watchId = navigator.geolocation.watchPosition((pos) => {
-    currentPos = {
-      lat: pos.coords.latitude,
-      lon: pos.coords.longitude
-    };
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      currentPos = {
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude
+      };
 
-    const d = calcDistance(
-      currentPos.lat,
-      currentPos.lon,
-      targetPos.lat,
-      targetPos.lon
-    );
+      const d = calcDistance(
+        currentPos.lat,
+        currentPos.lon,
+        targetPos.lat,
+        targetPos.lon
+      );
 
-    document.getElementById("dist").textContent =
-      "距離: " + Math.round(d) + " m";
-  });
+      document.getElementById("distance").textContent =
+        "距離: " + Math.round(d) + " m";
+
+      const bearing = calcBearing(
+        currentPos.lat,
+        currentPos.lon,
+        targetPos.lat,
+        targetPos.lon
+      );
+
+      const diff = bearing - deviceHeading;
+
+      document.getElementById("arrow").style.transform =
+        `translate(-50%, -50%) rotate(${diff}deg)`;
+    },
+    null,
+    { enableHighAccuracy: true }
+  );
 }
 
-// 300〜600m先にマーカー生成
+// ---------- マーカー生成 ----------
 function generateTarget(lat, lon) {
-  const distance = 300 + Math.random() * 300; // m
+  const distance = 300 + Math.random() * 300;
   const angle = Math.random() * 2 * Math.PI;
 
   const dLat = distance * Math.cos(angle) / 111000;
@@ -75,7 +161,7 @@ function generateTarget(lat, lon) {
   };
 }
 
-// 距離計算（ハーバサイン）
+// ---------- 距離 ----------
 function calcDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = x => x * Math.PI / 180;
@@ -91,6 +177,20 @@ function calcDistance(lat1, lon1, lat2, lon2) {
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+// ---------- 方角 ----------
+function calcBearing(lat1, lon1, lat2, lon2) {
+  const toRad = x => x * Math.PI / 180;
+  const toDeg = x => x * 180 / Math.PI;
+
+  const dLon = toRad(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+  const x =
+    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+    Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 </script>
 
