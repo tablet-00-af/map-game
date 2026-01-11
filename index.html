@@ -200,7 +200,7 @@ function startWatch() {
       let diff = bearing - deviceHeading;
       diff = ((diff + 540) % 360) - 180;
 
-      smoothDiff += (diff - smoothDiff) * 0.15;
+      smoothDiff += (diff - smoothDiff) * 0.35;
 
       document.getElementById("arrow").style.transform =
         `translate(-50%, -100%) rotate(${smoothDiff}deg)`;
