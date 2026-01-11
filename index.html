@@ -116,8 +116,9 @@ function startGame() {
   startTime = Date.now();
 
   document.getElementById("result").textContent = "";
-  document.getElementById("status").textContent = "探索中…";
   document.getElementById("total").textContent = "";
+  document.getElementById("timer").textContent = "";
+  document.getElementById("status").textContent = "探索中…";
 
   requestOrientation();
 
@@ -138,12 +139,10 @@ function arrive() {
 
   const score = Math.max(0, 100 - Math.floor(d / 10) * 10);
 
-  /* フリー */
   if (gameMode === "free") {
     endGame(`距離 ${Math.round(d)}m / ${score}点`);
   }
 
-  /* タイムアタック */
   if (gameMode === "timeattack") {
     if (score === 100) {
       const t = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -153,12 +152,10 @@ function arrive() {
     }
   }
 
-  /* タイムリミット */
   if (gameMode === "timelimit") {
     totalScore += score;
     document.getElementById("total").textContent =
       `合計スコア: ${totalScore}`;
-
     targetPos = generateTarget(currentPos.lat, currentPos.lon);
   }
 }
@@ -166,7 +163,7 @@ function arrive() {
 /* ===== 終了 ===== */
 function endGame(msg) {
   gameState = "end";
-  navigator.geolocation.clearWatch(watchId);
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   document.getElementById("status").textContent = "ゲーム終了";
   document.getElementById("result").textContent = msg;
 }
@@ -183,7 +180,7 @@ function requestOrientation() {
   }
 }
 
-/* ===== 向き取得（30fps） ===== */
+/* ===== コンパス更新（30fps） ===== */
 function handleOrientation(e) {
   const now = Date.now();
   if (now - lastCompass < 33) return;
@@ -195,7 +192,7 @@ function handleOrientation(e) {
     deviceHeading = 360 - e.alpha;
 }
 
-/* ===== 位置追跡（20fps） ===== */
+/* ===== GPS追跡 ===== */
 function startWatch() {
   watchId = navigator.geolocation.watchPosition(pos => {
     if (gameState !== "playing") return;
@@ -217,15 +214,23 @@ function startWatch() {
     document.getElementById("distance").textContent =
       gameMode === "free" ? `距離: ${Math.round(d)} m` : "";
 
-    if (gameMode !== "free") {
-      const t = Math.floor((Date.now() - startTime) / 1000);
-      document.getElementById("timer").textContent =
-        gameMode === "timeattack"
-          ? `経過: ${t}s`
-          : `残り: ${Math.max(0, TIME_LIMIT - t)}s`;
+    /* ===== 時間表示（修正版） ===== */
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
-      if (gameMode === "timelimit" && t >= TIME_LIMIT) {
+    if (gameMode === "timeattack") {
+      document.getElementById("timer").textContent =
+        `経過: ${elapsed}s`;
+    }
+
+    if (gameMode === "timelimit") {
+      const remain = TIME_LIMIT - elapsed;
+
+      document.getElementById("timer").textContent =
+        `残り: ${Math.max(0, remain)}s`;
+
+      if (remain <= 0) {
         endGame(`時間切れ！ 合計 ${totalScore}点`);
+        return;
       }
     }
 
