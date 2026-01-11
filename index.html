@@ -11,18 +11,22 @@
     text-align: center;
     padding: 20px;
   }
+
   button {
     font-size: 16px;
     padding: 10px 20px;
+    margin: 8px;
   }
+
   #compass {
     width: 220px;
     height: 220px;
     border: 3px solid black;
     border-radius: 50%;
-    margin: 30px auto;
+    margin: 25px auto;
     position: relative;
   }
+
   #arrow {
     font-size: 70px;
     position: absolute;
@@ -30,16 +34,27 @@
     left: 50%;
     transform-origin: center;
     transform: translate(-50%, -50%) rotate(0deg);
+    transition: transform 0.1s linear;
   }
+
   #distance {
-    font-size: 18px;
+    font-size: 16px;
+    color: gray;
+  }
+
+  #result {
+    font-size: 20px;
+    margin-top: 15px;
+    font-weight: bold;
   }
 </style>
 </head>
 <body>
 
 <h2>コンパス探索ゲーム</h2>
+
 <button onclick="startGame()">スタート</button>
+<button onclick="arrive()">ここだ！</button>
 
 <p id="status">未開始</p>
 
@@ -48,6 +63,7 @@
 </div>
 
 <p id="distance">距離: - m</p>
+<p id="result"></p>
 
 <script>
 let targetPos = null;
@@ -55,33 +71,53 @@ let currentPos = null;
 let deviceHeading = 0;
 let watchId = null;
 
+let smoothDiff = 0;
+let gameState = "ready";
+
 // ---------- スタート ----------
 function startGame() {
-  document.getElementById("status").textContent = "スタート押下";
+  if (gameState === "playing") return;
+
+  gameState = "playing";
+  document.getElementById("result").textContent = "";
+  document.getElementById("status").textContent = "探索中…";
 
   requestOrientation();
 
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      document.getElementById("status").textContent =
-        "現在地取得OK";
-
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
 
       targetPos = generateTarget(lat, lon);
-
-      document.getElementById("status").textContent =
-        "マーカー生成完了";
-
       startWatch();
     },
-    (err) => {
-      document.getElementById("status").textContent =
-        "位置情報エラー: " + err.message;
+    () => {
+      alert("位置情報が取得できないよ");
     },
     { enableHighAccuracy: true }
   );
+}
+
+// ---------- 到着 ----------
+function arrive() {
+  if (gameState !== "playing" || !currentPos) return;
+
+  gameState = "end";
+  navigator.geolocation.clearWatch(watchId);
+
+  const d = calcDistance(
+    currentPos.lat,
+    currentPos.lon,
+    targetPos.lat,
+    targetPos.lon
+  );
+
+  const score = Math.max(0, Math.round(1000 - d * 10));
+
+  document.getElementById("status").textContent = "ゲーム終了";
+  document.getElementById("result").textContent =
+    `距離 ${Math.round(d)} m ／ スコア ${score} 点`;
 }
 
 // ---------- コンパス許可 ----------
@@ -114,6 +150,8 @@ function handleOrientation(e) {
 function startWatch() {
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
+      if (gameState !== "playing") return;
+
       currentPos = {
         lat: pos.coords.latitude,
         lon: pos.coords.longitude
@@ -136,10 +174,13 @@ function startWatch() {
         targetPos.lon
       );
 
-      const diff = bearing - deviceHeading;
+      let diff = bearing - deviceHeading;
+      diff = ((diff + 540) % 360) - 180;
+
+      smoothDiff += (diff - smoothDiff) * 0.15;
 
       document.getElementById("arrow").style.transform =
-        `translate(-50%, -50%) rotate(${diff}deg)`;
+        `translate(-50%, -50%) rotate(${smoothDiff}deg)`;
     },
     null,
     { enableHighAccuracy: true }
