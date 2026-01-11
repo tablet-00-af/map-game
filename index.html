@@ -136,7 +136,7 @@ function arrive() {
     targetPos.lon
   );
 
-  const score = Math.max(0, Math.round(1000 - d * 10));
+  const score = Math.max(0, 100 - Math.floor(Math.max(0, d - 10) / 10) * 10);
 
   document.getElementById("status").textContent = "ゲーム終了";
   document.getElementById("result").textContent =
