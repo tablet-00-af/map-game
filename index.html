@@ -18,6 +18,10 @@
     margin: 8px;
   }
 
+  #status {
+    margin: 10px;
+  }
+
   #compass {
     width: 220px;
     height: 220px;
@@ -27,14 +31,34 @@
     position: relative;
   }
 
+  /* ===== 針 ===== */
   #arrow {
-    font-size: 70px;
     position: absolute;
     top: 50%;
     left: 50%;
-    transform-origin: center;
-    transform: translate(-50%, -50%) rotate(0deg);
+    width: 6px;
+    height: 90px;
+    transform-origin: center bottom;
+    transform: translate(-50%, -100%) rotate(0deg);
     transition: transform 0.1s linear;
+  }
+
+  #needle {
+    width: 6px;
+    height: 90px;
+    background: black;
+    position: relative;
+  }
+
+  #needle::after {
+    content: "";
+    position: absolute;
+    top: -14px;
+    left: -9px;
+    width: 24px;
+    height: 24px;
+    background: red;
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
   }
 
   #distance {
@@ -59,7 +83,9 @@
 <p id="status">未開始</p>
 
 <div id="compass">
-  <div id="arrow">▲</div>
+  <div id="arrow">
+    <div id="needle"></div>
+  </div>
 </div>
 
 <p id="distance">距離: - m</p>
@@ -74,11 +100,12 @@ let watchId = null;
 let smoothDiff = 0;
 let gameState = "ready";
 
-// ---------- スタート ----------
+/* ===== スタート ===== */
 function startGame() {
   if (gameState === "playing") return;
 
   gameState = "playing";
+  smoothDiff = 0;
   document.getElementById("result").textContent = "";
   document.getElementById("status").textContent = "探索中…";
 
@@ -88,18 +115,15 @@ function startGame() {
     (pos) => {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
-
       targetPos = generateTarget(lat, lon);
       startWatch();
     },
-    () => {
-      alert("位置情報が取得できないよ");
-    },
+    () => alert("位置情報が取得できないよ"),
     { enableHighAccuracy: true }
   );
 }
 
-// ---------- 到着 ----------
+/* ===== 到着 ===== */
 function arrive() {
   if (gameState !== "playing" || !currentPos) return;
 
@@ -120,24 +144,23 @@ function arrive() {
     `距離 ${Math.round(d)} m ／ スコア ${score} 点`;
 }
 
-// ---------- コンパス許可 ----------
+/* ===== コンパス許可 ===== */
 function requestOrientation() {
   if (
     typeof DeviceOrientationEvent !== "undefined" &&
     typeof DeviceOrientationEvent.requestPermission === "function"
   ) {
-    DeviceOrientationEvent.requestPermission()
-      .then(res => {
-        if (res === "granted") {
-          window.addEventListener("deviceorientation", handleOrientation);
-        }
-      });
+    DeviceOrientationEvent.requestPermission().then(res => {
+      if (res === "granted") {
+        window.addEventListener("deviceorientation", handleOrientation);
+      }
+    });
   } else {
     window.addEventListener("deviceorientation", handleOrientation);
   }
 }
 
-// ---------- 向き取得 ----------
+/* ===== 向き取得 ===== */
 function handleOrientation(e) {
   if (e.webkitCompassHeading !== undefined) {
     deviceHeading = e.webkitCompassHeading;
@@ -146,7 +169,7 @@ function handleOrientation(e) {
   }
 }
 
-// ---------- 位置追跡 ----------
+/* ===== 位置追跡 ===== */
 function startWatch() {
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
@@ -180,14 +203,14 @@ function startWatch() {
       smoothDiff += (diff - smoothDiff) * 0.15;
 
       document.getElementById("arrow").style.transform =
-        `translate(-50%, -50%) rotate(${smoothDiff}deg)`;
+        `translate(-50%, -100%) rotate(${smoothDiff}deg)`;
     },
     null,
     { enableHighAccuracy: true }
   );
 }
 
-// ---------- マーカー生成 ----------
+/* ===== マーカー生成 ===== */
 function generateTarget(lat, lon) {
   const distance = 300 + Math.random() * 300;
   const angle = Math.random() * 2 * Math.PI;
@@ -196,13 +219,10 @@ function generateTarget(lat, lon) {
   const dLon = distance * Math.sin(angle) /
     (111000 * Math.cos(lat * Math.PI / 180));
 
-  return {
-    lat: lat + dLat,
-    lon: lon + dLon
-  };
+  return { lat: lat + dLat, lon: lon + dLon };
 }
 
-// ---------- 距離 ----------
+/* ===== 距離 ===== */
 function calcDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = x => x * Math.PI / 180;
@@ -216,11 +236,10 @@ function calcDistance(lat1, lon1, lat2, lon2) {
     Math.cos(toRad(lat2)) *
     Math.sin(dLon / 2) ** 2;
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ---------- 方角 ----------
+/* ===== 方角 ===== */
 function calcBearing(lat1, lon1, lat2, lon2) {
   const toRad = x => x * Math.PI / 180;
   const toDeg = x => x * 180 / Math.PI;
