@@ -200,7 +200,13 @@ function startWatch() {
       let diff = bearing - deviceHeading;
       diff = ((diff + 540) % 360) - 180;
 
-      const factor = Math.abs(diff) > 30 ? 0.5 : 0.25;
+      const abs = Math.abs(diff);
+      let factor;
+
+      if (abs > 60) factor = 0.9;      // 大きくズレたら即回転
+      else if (abs > 20) factor = 0.6; // 普通の動き
+      else factor = 0.35;              // 微調整だけなめらか
+
       smoothDiff += (diff - smoothDiff) * factor;
 
       document.getElementById("arrow").style.transform =
