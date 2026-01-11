@@ -138,7 +138,7 @@ function arrive() {
 
   const score = Math.max(
     0,
-    100 - Math.floor(d / 10) * 10
+    100 - Math.floor((d - 0.001) / 10) * 10
   );
 
   document.getElementById("status").textContent = "ゲーム終了";
