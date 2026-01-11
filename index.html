@@ -6,71 +6,69 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-  body {
-    font-family: sans-serif;
-    text-align: center;
-    padding: 20px;
-  }
-
-  button {
-    font-size: 16px;
-    padding: 10px 20px;
-    margin: 8px;
-  }
-
-  #compass {
-    width: 220px;
-    height: 220px;
-    border: 3px solid black;
-    border-radius: 50%;
-    margin: 25px auto;
-    position: relative;
-  }
-
-  /* ===== コンパス針 ===== */
-  #arrow {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 6px;
-    height: 90px;
-    transform-origin: center bottom;
-    transform: translate(-50%, -100%) rotate(0deg);
-    transition: transform 0.05s linear;
-  }
-
-  #needle {
-    width: 6px;
-    height: 90px;
-    background: black;
-    position: relative;
-  }
-
-  #needle::after {
-    content: "";
-    position: absolute;
-    top: -14px;
-    left: -9px;
-    width: 24px;
-    height: 24px;
-    background: red;
-    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-  }
-
-  #distance {
-    color: gray;
-  }
-
-  #result {
-    font-size: 20px;
-    margin-top: 15px;
-    font-weight: bold;
-  }
+body {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+button, select {
+  font-size: 16px;
+  padding: 8px 16px;
+  margin: 6px;
+}
+#compass {
+  width: 220px;
+  height: 220px;
+  border: 3px solid black;
+  border-radius: 50%;
+  margin: 20px auto;
+  position: relative;
+}
+#arrow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 90px;
+  transform-origin: center bottom;
+  transform: translate(-50%, -100%) rotate(0deg);
+}
+#needle {
+  width: 6px;
+  height: 90px;
+  background: black;
+  position: relative;
+}
+#needle::after {
+  content: "";
+  position: absolute;
+  top: -14px;
+  left: -9px;
+  width: 24px;
+  height: 24px;
+  background: red;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+#info {
+  margin-top: 10px;
+}
+#result {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 15px;
+}
 </style>
 </head>
 <body>
 
 <h2>コンパス探索ゲーム</h2>
+
+<select id="mode">
+  <option value="free">フリーモード</option>
+  <option value="timeattack">タイムアタック</option>
+  <option value="timelimit">タイムリミット</option>
+</select>
+<br>
 
 <button onclick="startGame()">スタート</button>
 <button onclick="arrive()">ここだ！</button>
@@ -83,193 +81,204 @@
   </div>
 </div>
 
-<p id="distance">距離: - m</p>
+<div id="info">
+  <p id="distance">距離: - m</p>
+  <p id="timer"></p>
+  <p id="total"></p>
+</div>
+
 <p id="result"></p>
 
 <script>
-let targetPos = null;
-let currentPos = null;
+let targetPos, currentPos;
 let deviceHeading = 0;
 let watchId = null;
 
 let smoothDiff = 0;
 let gameState = "ready";
+let gameMode = "free";
 
-/* 更新制限用 */
-let lastGPSUpdate = 0;
-let lastCompassUpdate = 0;
+let startTime = 0;
+let totalScore = 0;
+const TIME_LIMIT = 600; // 10分
+
+let lastGPS = 0;
+let lastCompass = 0;
 
 /* ===== スタート ===== */
 function startGame() {
   if (gameState === "playing") return;
 
+  gameMode = document.getElementById("mode").value;
   gameState = "playing";
   smoothDiff = 0;
+  totalScore = 0;
+  startTime = Date.now();
+
   document.getElementById("result").textContent = "";
   document.getElementById("status").textContent = "探索中…";
+  document.getElementById("total").textContent = "";
 
   requestOrientation();
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      targetPos = generateTarget(lat, lon);
-      startWatch();
-    },
-    () => alert("位置情報が取得できないよ"),
-    { enableHighAccuracy: true }
-  );
+  navigator.geolocation.getCurrentPosition(pos => {
+    targetPos = generateTarget(pos.coords.latitude, pos.coords.longitude);
+    startWatch();
+  });
 }
 
 /* ===== 到着 ===== */
 function arrive() {
   if (gameState !== "playing" || !currentPos) return;
 
+  const d = calcDistance(
+    currentPos.lat, currentPos.lon,
+    targetPos.lat, targetPos.lon
+  );
+
+  const score = Math.max(0, 100 - Math.floor(d / 10) * 10);
+
+  /* フリー */
+  if (gameMode === "free") {
+    endGame(`距離 ${Math.round(d)}m / ${score}点`);
+  }
+
+  /* タイムアタック */
+  if (gameMode === "timeattack") {
+    if (score === 100) {
+      const t = ((Date.now() - startTime) / 1000).toFixed(1);
+      endGame(`成功！ タイム ${t} 秒`);
+    } else {
+      endGame(`失敗… ${score}点`);
+    }
+  }
+
+  /* タイムリミット */
+  if (gameMode === "timelimit") {
+    totalScore += score;
+    document.getElementById("total").textContent =
+      `合計スコア: ${totalScore}`;
+
+    targetPos = generateTarget(currentPos.lat, currentPos.lon);
+  }
+}
+
+/* ===== 終了 ===== */
+function endGame(msg) {
   gameState = "end";
   navigator.geolocation.clearWatch(watchId);
-
-  const d = calcDistance(
-    currentPos.lat,
-    currentPos.lon,
-    targetPos.lat,
-    targetPos.lon
-  );
-
-  const score = Math.max(
-    0,
-    100 - Math.floor((d - 0.001) / 10) * 10
-  );
-
   document.getElementById("status").textContent = "ゲーム終了";
-  document.getElementById("result").textContent =
-    `距離 ${Math.round(d)} m ／ スコア ${score} 点`;
+  document.getElementById("result").textContent = msg;
 }
 
 /* ===== コンパス許可 ===== */
 function requestOrientation() {
-  if (
-    typeof DeviceOrientationEvent !== "undefined" &&
-    typeof DeviceOrientationEvent.requestPermission === "function"
-  ) {
+  if (DeviceOrientationEvent?.requestPermission) {
     DeviceOrientationEvent.requestPermission().then(res => {
-      if (res === "granted") {
+      if (res === "granted")
         window.addEventListener("deviceorientation", handleOrientation);
-      }
     });
   } else {
     window.addEventListener("deviceorientation", handleOrientation);
   }
 }
 
-/* ===== 向き取得（30fps制限） ===== */
+/* ===== 向き取得（30fps） ===== */
 function handleOrientation(e) {
   const now = Date.now();
-  if (now - lastCompassUpdate < 33) return; // 約30fps
-  lastCompassUpdate = now;
+  if (now - lastCompass < 33) return;
+  lastCompass = now;
 
-  if (e.webkitCompassHeading !== undefined) {
+  if (e.webkitCompassHeading !== undefined)
     deviceHeading = e.webkitCompassHeading;
-  } else if (e.alpha !== null) {
+  else if (e.alpha !== null)
     deviceHeading = 360 - e.alpha;
-  }
 }
 
-/* ===== 位置追跡（20fps制限） ===== */
+/* ===== 位置追跡（20fps） ===== */
 function startWatch() {
-  watchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      if (gameState !== "playing") return;
+  watchId = navigator.geolocation.watchPosition(pos => {
+    if (gameState !== "playing") return;
 
-      const now = Date.now();
-      if (now - lastGPSUpdate < 50) return; // 20fps
-      lastGPSUpdate = now;
+    const now = Date.now();
+    if (now - lastGPS < 50) return;
+    lastGPS = now;
 
-      currentPos = {
-        lat: pos.coords.latitude,
-        lon: pos.coords.longitude
-      };
+    currentPos = {
+      lat: pos.coords.latitude,
+      lon: pos.coords.longitude
+    };
 
-      const d = calcDistance(
-        currentPos.lat,
-        currentPos.lon,
-        targetPos.lat,
-        targetPos.lon
-      );
+    const d = calcDistance(
+      currentPos.lat, currentPos.lon,
+      targetPos.lat, targetPos.lon
+    );
 
-      document.getElementById("distance").textContent =
-        "距離: " + Math.round(d) + " m";
+    document.getElementById("distance").textContent =
+      gameMode === "free" ? `距離: ${Math.round(d)} m` : "";
 
-      const bearing = calcBearing(
-        currentPos.lat,
-        currentPos.lon,
-        targetPos.lat,
-        targetPos.lon
-      );
+    if (gameMode !== "free") {
+      const t = Math.floor((Date.now() - startTime) / 1000);
+      document.getElementById("timer").textContent =
+        gameMode === "timeattack"
+          ? `経過: ${t}s`
+          : `残り: ${Math.max(0, TIME_LIMIT - t)}s`;
 
-      let diff = bearing - deviceHeading;
-      diff = ((diff + 540) % 360) - 180;
+      if (gameMode === "timelimit" && t >= TIME_LIMIT) {
+        endGame(`時間切れ！ 合計 ${totalScore}点`);
+      }
+    }
 
-      /* ノイズ除去 */
-      if (Math.abs(diff) < 2) diff = 0;
+    const bearing = calcBearing(
+      currentPos.lat, currentPos.lon,
+      targetPos.lat, targetPos.lon
+    );
 
-      /* 条件付き factor */
-      const abs = Math.abs(diff);
-      let factor;
-      if (abs > 60) factor = 0.9;
-      else if (abs > 20) factor = 0.6;
-      else factor = 0.35;
+    let diff = ((bearing - deviceHeading + 540) % 360) - 180;
+    if (Math.abs(diff) < 2) diff = 0;
 
-      smoothDiff += (diff - smoothDiff) * factor;
+    const abs = Math.abs(diff);
+    const factor = abs > 60 ? 0.9 : abs > 20 ? 0.6 : 0.35;
+    smoothDiff += (diff - smoothDiff) * factor;
 
-      document.getElementById("arrow").style.transform =
-        `translate(-50%, -100%) rotate(${smoothDiff}deg)`;
-    },
-    null,
-    { enableHighAccuracy: true }
-  );
+    document.getElementById("arrow").style.transform =
+      `translate(-50%, -100%) rotate(${smoothDiff}deg)`;
+  });
 }
 
 /* ===== マーカー生成 ===== */
 function generateTarget(lat, lon) {
-  const distance = 300 + Math.random() * 300;
-  const angle = Math.random() * 2 * Math.PI;
-
-  const dLat = distance * Math.cos(angle) / 111000;
-  const dLon = distance * Math.sin(angle) /
-    (111000 * Math.cos(lat * Math.PI / 180));
-
-  return { lat: lat + dLat, lon: lon + dLon };
+  const d = 300 + Math.random() * 300;
+  const a = Math.random() * 2 * Math.PI;
+  return {
+    lat: lat + (d * Math.cos(a)) / 111000,
+    lon: lon + (d * Math.sin(a)) /
+      (111000 * Math.cos(lat * Math.PI / 180))
+  };
 }
 
 /* ===== 距離 ===== */
 function calcDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = x => x * Math.PI / 180;
-
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-
   const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-    Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) ** 2;
-
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    Math.sin(dLat/2)**2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 /* ===== 方角 ===== */
 function calcBearing(lat1, lon1, lat2, lon2) {
   const toRad = x => x * Math.PI / 180;
   const toDeg = x => x * 180 / Math.PI;
-
   const dLon = toRad(lon2 - lon1);
   const y = Math.sin(dLon) * Math.cos(toRad(lat2));
   const x =
     Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
     Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
-
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 </script>
