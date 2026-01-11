@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>コンパス探索ゲームver6</title>
+<title>コンパス探索ゲーム</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -199,6 +199,8 @@ function startWatch() {
 
       let diff = bearing - deviceHeading;
       diff = ((diff + 540) % 360) - 180;
+
+      if (Math.abs(diff) < 2) diff = 0;
 
       const abs = Math.abs(diff);
       let factor;
