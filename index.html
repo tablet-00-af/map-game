@@ -2,339 +2,367 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>コンパス探索ゲーム</title>
+<title>Compass Quest</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+/* ===== 全体 ===== */
 body {
-  font-family: sans-serif;
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
   text-align: center;
-  padding: 20px;
-}
-button, select {
-  font-size: 16px;
-  padding: 8px 16px;
-  margin: 6px;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color: #e5e7eb;
 }
 
-/* ===== 名前欄 ===== */
+/* ===== 名前 ===== */
 #nameBox {
   position: fixed;
   top: 10px;
   right: 10px;
-  background: #fff;
-  border: 1px solid #aaa;
+  background: rgba(15,23,42,0.9);
+  border: 1px solid #38bdf8;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   z-index: 1000;
 }
 #playerName {
   width: 90px;
+  background: #020617;
+  color: #e5e7eb;
+  border: 1px solid #38bdf8;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+/* ===== 画面 ===== */
+.screen {
+  display: none;
+  padding-top: 90px;
+  min-height: 100vh;
+}
+.active { display: block; }
+
+/* ===== タイトル ===== */
+h1 {
+  font-size: 32px;
+  letter-spacing: 3px;
+  margin-bottom: 30px;
+  text-shadow: 0 0 12px rgba(56,189,248,0.8);
+}
+
+/* ===== ボタン共通 ===== */
+button {
+  appearance: none;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 24px;
+  margin: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: white;
+  cursor: pointer;
+
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  box-shadow:
+    0 6px 0 #1e40af,
+    0 8px 16px rgba(0,0,0,0.4);
+
+  transition: transform 0.05s, box-shadow 0.05s;
+}
+
+button:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 2px 0 #1e40af,
+    0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* メイン */
+button.primary {
+  font-size: 22px;
+  padding: 18px 34px;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  box-shadow:
+    0 6px 0 #7f1d1d,
+    0 8px 16px rgba(0,0,0,0.5);
+}
+
+/* 危険 */
+button.danger {
+  background: linear-gradient(135deg, #6b7280, #111827);
+  box-shadow:
+    0 6px 0 #020617,
+    0 8px 16px rgba(0,0,0,0.5);
 }
 
 /* ===== コンパス ===== */
 #compass {
   width: 220px;
   height: 220px;
-  border: 3px solid black;
-  border-radius: 50%;
   margin: 20px auto;
+  border-radius: 50%;
+  background: radial-gradient(circle, #020617, #000);
+  border: 3px solid #38bdf8;
+  box-shadow: 0 0 20px rgba(56,189,248,0.6);
   position: relative;
 }
+
 #arrow {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 6px;
-  height: 90px;
-  transform-origin: center bottom;
-  transform: translate(-50%, -100%) rotate(0deg);
+  width: 0;
+  height: 0;
+  transform-origin: center center;
+  transform: translate(-50%, -50%) rotate(0deg);
 }
+
+
 #needle {
-  width: 6px;
-  height: 90px;
-  background: black;
   position: relative;
+  width: 4px;
+  height: 90px;
+  background: #e5e7eb;
+  border-radius: 2px;
+
+  /* 中心から上に伸ばす */
+  transform: translateY(-90px);
 }
+
+/* 中心の丸 */
 #needle::after {
   content: "";
   position: absolute;
-  top: -14px;
-  left: -9px;
-  width: 24px;
-  height: 24px;
-  background: red;
-  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  background: #38bdf8;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(56,189,248,0.6);
+}
+
+/* ===== 表示 ===== */
+#distance, #timer, #total {
+  font-size: 18px;
+  margin: 6px;
 }
 
 #result {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
-  margin-top: 15px;
+  margin-top: 14px;
 }
 </style>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
 
-<!-- 名前入力 -->
 <div id="nameBox">
-  名前：
-  <input id="playerName" type="text" placeholder="名前">
+  名前：<input id="playerName" placeholder="名前">
 </div>
 
-<h2>コンパス探索ゲーム</h2>
-
-<select id="mode">
-  <option value="free">フリーモード</option>
-  <option value="timeattack">タイムアタック</option>
-  <option value="timelimit">タイムリミット</option>
-</select><br>
-
-<button onclick="startGame()">スタート</button>
-<button onclick="arrive()">ここだ！</button><br>
-
-<button onclick="showRanking('timeattack')">TAランキング</button>
-<button onclick="showRanking('timelimit')">TLランキング</button>
-
-<p id="status">未開始</p>
-
-<div id="compass">
-  <div id="arrow"><div id="needle"></div></div>
+<!-- メニュー -->
+<div id="menu" class="screen active">
+  <h1>COMPASS QUEST</h1>
+  <button onclick="selectMode('free')">フリー</button><br>
+  <button onclick="selectMode('timeattack')">タイムアタック</button><br>
+  <button onclick="selectMode('timelimit')">タイムリミット</button><br><br>
+  <button onclick="showRanking('timeattack')">TAランキング</button>
+  <button onclick="showRanking('timelimit')">TLランキング</button>
 </div>
 
-<p id="distance"></p>
-<p id="timer"></p>
-<p id="total"></p>
-<p id="result"></p>
+<!-- ゲーム -->
+<div id="game" class="screen">
+  <p id="status">探索中…</p>
+
+  <div id="compass">
+    <div id="arrow"><div id="needle"></div></div>
+  </div>
+
+  <p id="distance"></p>
+  <p id="timer"></p>
+  <p id="total"></p>
+
+  <button class="primary" onclick="confirmArrive()">ここだ！</button><br>
+  <button class="danger" onclick="confirmQuit()">やめる</button>
+
+  <p id="result"></p>
+</div>
 
 <script>
-/* ===== Firebase設定（自分のに変更） ===== */
-const firebaseConfig = {
+/* ===== Firebase ===== */
+firebase.initializeApp({
   apiKey: "AIzaSyB7igFY8EGnUIgsGq9uUwvttGKcUB18d6Y",
   authDomain: "map-game-47f33.firebaseapp.com",
   projectId: "map-game-47f33"
-};
-firebase.initializeApp(firebaseConfig);
+});
 const db = firebase.firestore();
 
 /* ===== 変数 ===== */
-let targetPos, currentPos;
-let deviceHeading = 0;
-let watchId = null;
-let timerId = null;
+let gameMode=null,targetPos=null,currentPos=null;
+let watchId=null,timerId=null;
+let deviceHeading=0,startTime=0,totalScore=0;
+const TIME_LIMIT=600;
 
-let gameMode = "free";
-let gameState = "ready";
-let startTime = 0;
-let totalScore = 0;
-
-const TIME_LIMIT = 600;
-
-/* ===== 名前取得 ===== */
-function getPlayerName() {
-  const n = document.getElementById("playerName").value.trim();
-  return n ? n : "NO NAME";
+/* ===== 画面 ===== */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
 }
 
-/* ===== スタート ===== */
-function startGame() {
-  if (gameState === "playing") return;
+/* ===== モード ===== */
+function selectMode(m){
+  gameMode=m;
+  showScreen("game");
+  startGame();
+}
 
-  gameMode = document.getElementById("mode").value;
-  gameState = "playing";
-  startTime = Date.now();
-  totalScore = 0;
+/* ===== 確認 ===== */
+function confirmArrive(){ if(confirm("ここで到着判定しますか？")) arrive(); }
+function confirmQuit(){ if(confirm("ゲームをやめますか？")) quitGame(); }
 
-  document.getElementById("result").textContent = "";
-  document.getElementById("total").textContent = "";
-  document.getElementById("distance").textContent = "";
-  document.getElementById("status").textContent = "探索中…";
+/* ===== やめる ===== */
+function quitGame(){
+  stopAll();
+  document.getElementById("result").textContent="";
+  showScreen("menu");
+}
 
+/* ===== 停止 ===== */
+function stopAll(){
+  if(watchId){navigator.geolocation.clearWatch(watchId);watchId=null;}
+  if(timerId){clearInterval(timerId);timerId=null;}
+  targetPos=currentPos=gameMode=null;
+  startTime=totalScore=0;
+  ["distance","timer","total"].forEach(id=>document.getElementById(id).textContent="");
+}
+
+/* ===== 開始 ===== */
+function startGame(){
+  startTime=Date.now();
+  totalScore=0;
   requestOrientation();
-
-  navigator.geolocation.getCurrentPosition(pos => {
-    targetPos = generateTarget(pos.coords.latitude, pos.coords.longitude);
-    startGPS();
-    startTimer();
+  navigator.geolocation.getCurrentPosition(p=>{
+    targetPos=generateTarget(p.coords.latitude,p.coords.longitude);
+    startGPS(); startTimer();
   });
 }
 
 /* ===== タイマー ===== */
-function startTimer() {
-  clearInterval(timerId);
-  timerId = setInterval(() => {
-    if (gameState !== "playing") return;
-
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-
-    if (gameMode === "timeattack") {
-      document.getElementById("timer").textContent =
-        `経過: ${elapsed}s`;
-    }
-
-    if (gameMode === "timelimit") {
-      const remain = TIME_LIMIT - elapsed;
-      document.getElementById("timer").textContent =
-        `残り: ${Math.max(0, remain)}s`;
-
-      if (remain <= 0) {
-        endGame(`時間切れ！ 合計 ${totalScore}点`);
-        submitScore("timelimit", totalScore);
+function startTimer(){
+  timerId=setInterval(()=>{
+    const t=Math.floor((Date.now()-startTime)/1000);
+    if(gameMode==="timeattack") timer.textContent=`経過 ${t}s`;
+    if(gameMode==="timelimit"){
+      const r=TIME_LIMIT-t;
+      timer.textContent=`残り ${Math.max(0,r)}s`;
+      if(r<=0){
+        submit("timelimit",totalScore);
+        stopAll();
+        result.textContent=`終了！ ${totalScore}点`;
       }
     }
-  }, 500);
+  },500);
 }
 
 /* ===== 到着 ===== */
-function arrive() {
-  if (gameState !== "playing" || !currentPos) return;
+function arrive(){
+  if(!currentPos||!targetPos) return;
+  const d=calcDistance(currentPos.lat,currentPos.lon,targetPos.lat,targetPos.lon);
+  const score=Math.max(0,100-Math.floor(d/10)*10);
 
-  const d = calcDistance(
-    currentPos.lat, currentPos.lon,
-    targetPos.lat, targetPos.lon
-  );
-  const score = Math.max(0, 100 - Math.floor(d / 10) * 10);
-
-  if (gameMode === "free") {
-    endGame(`距離 ${Math.round(d)}m / ${score}点`);
+  if(gameMode==="free"){
+    stopAll();
+    result.textContent=`${Math.round(d)}m / ${score}点`;
   }
-
-  if (gameMode === "timeattack") {
-    if (score === 100) {
-      const t = ((Date.now() - startTime) / 1000).toFixed(1);
-      endGame(`成功！ ${t}秒`);
-      submitScore("timeattack", Number(t));
+  if(gameMode==="timeattack"){
+    if(score===100){
+      const t=((Date.now()-startTime)/1000).toFixed(1);
+      submit("timeattack",Number(t));
+      stopAll();
+      result.textContent=`成功！ ${t}秒`;
     } else {
-      endGame(`失敗… ${score}点`);
+      stopAll(); result.textContent="失敗…";
     }
   }
-
-  if (gameMode === "timelimit") {
-    totalScore += score;
-    document.getElementById("total").textContent =
-      `合計: ${totalScore}点`;
-    targetPos = generateTarget(currentPos.lat, currentPos.lon);
+  if(gameMode==="timelimit"){
+    totalScore+=score;
+    total.textContent=`合計 ${totalScore}点`;
+    targetPos=generateTarget(currentPos.lat,currentPos.lon);
   }
 }
 
-/* ===== 終了 ===== */
-function endGame(msg) {
-  gameState = "end";
-  navigator.geolocation.clearWatch(watchId);
-  clearInterval(timerId);
-  document.getElementById("status").textContent = "ゲーム終了";
-  document.getElementById("result").textContent = msg;
-}
-
-/* ===== GPS ===== */
-function startGPS() {
-  watchId = navigator.geolocation.watchPosition(pos => {
-    if (gameState !== "playing") return;
-
-    currentPos = {
-      lat: pos.coords.latitude,
-      lon: pos.coords.longitude
-    };
-
-    const d = calcDistance(
-      currentPos.lat, currentPos.lon,
-      targetPos.lat, targetPos.lon
-    );
-
-    if (gameMode === "free") {
-      document.getElementById("distance").textContent =
-        `距離: ${Math.round(d)}m`;
-    }
-
-    const bearing = calcBearing(
-      currentPos.lat, currentPos.lon,
-      targetPos.lat, targetPos.lon
-    );
-
-    document.getElementById("arrow").style.transform =
-      `translate(-50%, -100%) rotate(${bearing - deviceHeading}deg)`;
+/* ===== GPS & コンパス ===== */
+function startGPS(){
+  watchId=navigator.geolocation.watchPosition(p=>{
+    currentPos={lat:p.coords.latitude,lon:p.coords.longitude};
+    const d=calcDistance(currentPos.lat,currentPos.lon,targetPos.lat,targetPos.lon);
+    const b=calcBearing(currentPos.lat,currentPos.lon,targetPos.lat,targetPos.lon);
+    arrow.style.transform=`translate(-50%, -100%) rotate(${b-deviceHeading}deg)`;
   });
 }
 
-/* ===== コンパス ===== */
-function requestOrientation() {
-  if (DeviceOrientationEvent?.requestPermission) {
-    DeviceOrientationEvent.requestPermission().then(r => {
-      if (r === "granted")
-        window.addEventListener("deviceorientation", e => {
-          deviceHeading = e.webkitCompassHeading ?? (360 - e.alpha);
+function requestOrientation(){
+  if(DeviceOrientationEvent?.requestPermission){
+    DeviceOrientationEvent.requestPermission().then(r=>{
+      if(r==="granted"){
+        window.addEventListener("deviceorientation",e=>{
+          deviceHeading=e.webkitCompassHeading??(360-e.alpha);
         });
+      }
     });
   } else {
-    window.addEventListener("deviceorientation", e => {
-      deviceHeading = 360 - e.alpha;
+    window.addEventListener("deviceorientation",e=>{
+      deviceHeading=360-e.alpha;
     });
   }
 }
 
-/* ===== ランキング送信 ===== */
-function submitScore(mode, value) {
+/* ===== ランキング ===== */
+function submit(mode,value){
   db.collection("ranking").add({
-    name: getPlayerName(),
-    mode,
-    value,
-    time: Date.now()
+    name: playerName.value || "NO NAME",
+    mode,value,time:Date.now()
   });
 }
-
-/* ===== ランキング表示 ===== */
-async function showRanking(mode) {
-  const q = db.collection("ranking")
-    .where("mode", "==", mode)
-    .orderBy("value", mode === "timeattack" ? "asc" : "desc")
-    .limit(5);
-
-  const snap = await q.get();
-  let text = "🏆 ランキング\n";
-
-  snap.forEach((doc, i) => {
-    const d = doc.data();
-    text += `${i+1}位 ${d.name} : ${d.value}\n`;
-  });
-  alert(text);
+async function showRanking(mode){
+  const q=db.collection("ranking").where("mode","==",mode)
+    .orderBy("value",mode==="timeattack"?"asc":"desc").limit(5);
+  const s=await q.get();
+  let t="ランキング\n";
+  s.forEach((d,i)=>t+=`${i+1}位 ${d.data().name} ${d.data().value}\n`);
+  alert(t);
 }
 
 /* ===== 数学 ===== */
-function generateTarget(lat, lon) {
-  const d = 300 + Math.random() * 300;
-  const a = Math.random() * Math.PI * 2;
+function generateTarget(lat,lon){
+  const d=300+Math.random()*300,a=Math.random()*Math.PI*2;
   return {
-    lat: lat + (d * Math.cos(a)) / 111000,
-    lon: lon + (d * Math.sin(a)) /
-      (111000 * Math.cos(lat * Math.PI / 180))
+    lat:lat+d*Math.cos(a)/111000,
+    lon:lon+d*Math.sin(a)/(111000*Math.cos(lat*Math.PI/180))
   };
 }
-function calcDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const toRad = x => x * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat/2)**2 +
-    Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*
-    Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+function calcDistance(a,b,c,d){
+  const R=6371000,to=x=>x*Math.PI/180;
+  const A=to(c-a),B=to(d-b);
+  const x=Math.sin(A/2)**2+Math.cos(to(a))*Math.cos(to(c))*Math.sin(B/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-function calcBearing(lat1, lon1, lat2, lon2) {
-  const toRad = x => x * Math.PI / 180;
-  const toDeg = x => x * 180 / Math.PI;
-  const dLon = toRad(lon2 - lon1);
-  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
-  const x =
-    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-    Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+function calcBearing(a,b,c,d){
+  const to=x=>x*Math.PI/180;
+  return (Math.atan2(
+    Math.sin(to(d-b))*Math.cos(to(c)),
+    Math.cos(to(a))*Math.sin(to(c))-
+    Math.sin(to(a))*Math.cos(to(c))*Math.cos(to(d-b))
+  )*180/Math.PI+360)%360;
 }
 </script>
 
