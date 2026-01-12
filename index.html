@@ -334,12 +334,29 @@ function submit(mode,value){
   });
 }
 async function showRanking(mode){
-  const q=db.collection("ranking").where("mode","==",mode)
-    .orderBy("value",mode==="timeattack"?"asc":"desc").limit(5);
-  const s=await q.get();
-  let t="ランキング\n";
-  s.forEach((d,i)=>t+=`${i+1}位 ${d.data().name} ${d.data().value}\n`);
-  alert(t);
+  try {
+    const q = db.collection("ranking")
+      .where("mode","==",mode)
+      .orderBy("value", mode==="timeattack" ? "asc" : "desc")
+      .limit(5);
+
+    const s = await q.get();
+
+    if(s.empty){
+      alert("まだランキングがありません");
+      return;
+    }
+
+    let t = "ランキング\n";
+    s.forEach((d,i)=>{
+      t += `${i+1}位 ${d.data().name} ${d.data().value}\n`;
+    });
+    alert(t);
+
+  } catch(e){
+    alert("ランキング取得エラー");
+    console.error(e);
+  }
 }
 
 /* ===== 数学 ===== */
