@@ -16,6 +16,24 @@ button, select {
   padding: 8px 16px;
   margin: 6px;
 }
+
+/* ===== 名前欄 ===== */
+#nameBox {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: #fff;
+  border: 1px solid #aaa;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 1000;
+}
+#playerName {
+  width: 90px;
+}
+
+/* ===== コンパス ===== */
 #compass {
   width: 220px;
   height: 220px;
@@ -49,6 +67,7 @@ button, select {
   background: red;
   clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
 }
+
 #result {
   font-size: 20px;
   font-weight: bold;
@@ -60,7 +79,14 @@ button, select {
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
+
 <body>
+
+<!-- 名前入力 -->
+<div id="nameBox">
+  名前：
+  <input id="playerName" type="text" placeholder="名前">
+</div>
 
 <h2>コンパス探索ゲーム</h2>
 
@@ -88,7 +114,7 @@ button, select {
 <p id="result"></p>
 
 <script>
-/* ===== Firebase 設定（自分のに置き換え） ===== */
+/* ===== Firebase設定（自分のに変更） ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyB7igFY8EGnUIgsGq9uUwvttGKcUB18d6Y",
   authDomain: "map-game-47f33.firebaseapp.com",
@@ -97,7 +123,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* ===== ゲーム変数 ===== */
+/* ===== 変数 ===== */
 let targetPos, currentPos;
 let deviceHeading = 0;
 let watchId = null;
@@ -109,6 +135,12 @@ let startTime = 0;
 let totalScore = 0;
 
 const TIME_LIMIT = 600;
+
+/* ===== 名前取得 ===== */
+function getPlayerName() {
+  const n = document.getElementById("playerName").value.trim();
+  return n ? n : "NO NAME";
+}
 
 /* ===== スタート ===== */
 function startGame() {
@@ -248,11 +280,8 @@ function requestOrientation() {
 
 /* ===== ランキング送信 ===== */
 function submitScore(mode, value) {
-  const name = prompt("名前を入力");
-  if (!name) return;
-
   db.collection("ranking").add({
-    name,
+    name: getPlayerName(),
     mode,
     value,
     time: Date.now()
