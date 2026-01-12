@@ -170,22 +170,22 @@ button.danger {
 <body>
 
 <div id="nameBox">
-  名前：<input id="playerName" placeholder="名前">
+  名前：<input id="playerName" placeholder="NO NAME">
 </div>
 
 <!-- メニュー -->
 <div id="menu" class="screen active">
   <h1>COMPASS QUEST</h1>
-  <button onclick="selectMode('free')">フリー</button><br>
+  <button onclick="selectMode('free')">フリーモード</button><br>
   <button onclick="selectMode('timeattack')">タイムアタック</button><br>
   <button onclick="selectMode('timelimit')">タイムリミット</button><br><br>
-  <button onclick="showRanking('timeattack')">TAランキング</button>
+  <button onclick="showRanking('timeattack')">TAランキング</button><br>
   <button onclick="showRanking('timelimit')">TLランキング</button>
 </div>
 
 <!-- ゲーム -->
 <div id="game" class="screen">
-  <p id="status">探索中…</p>
+  <p id="status">---</p>
 
   <div id="compass">
     <div id="arrow"><div id="needle"></div></div>
@@ -195,7 +195,7 @@ button.danger {
   <p id="timer"></p>
   <p id="total"></p>
 
-  <button class="primary" onclick="confirmArrive()">到着！</button><br>
+  <button id="arriveBtn" class="primary" onclick="confirmArrive()">到着！</button><br>
   <button class="danger" onclick="confirmQuit()">やめる</button>
 
   <p id="result"></p>
@@ -242,6 +242,13 @@ function quitGame(){
 
 /* ===== 停止 ===== */
 function stopAll(){
+  const btn = document.getElementById("arriveBtn");
+  btn.disabled = true;
+  btn.style.opacity = 0.5;
+
+  const el = document.getElementById("status");
+  el.textContent = "探索終了";
+
   if(watchId){navigator.geolocation.clearWatch(watchId);watchId=null;}
   if(timerId){clearInterval(timerId);timerId=null;}
   targetPos=currentPos=gameMode=null;
@@ -258,6 +265,19 @@ function startGame(){
     targetPos=generateTarget(p.coords.latitude,p.coords.longitude);
     startGPS(); startTimer();
   });
+
+  const btn = document.getElementById("arriveBtn");
+  btn.disabled = false;
+  btn.style.opacity = 1;
+
+  const el = document.getElementById("status");
+　if(gameMode==="timeattack"){
+    el.textContent = "タイムアタック / 探索中";
+  } else if(gameMode==="timelimit"){
+    el.textContent = "タイムリミット / 探索中";
+  } else {
+    el.textContent = "フリーモード / 探索中";
+  }
 }
 
 /* ===== タイマー ===== */
@@ -294,12 +314,12 @@ function arrive(){
       stopAll();
       result.textContent=`成功！ ${t}秒`;
     } else {
-      stopAll(); result.textContent="失敗…";
+      stopAll(); result.textContent=`失敗… / ${Math.round(d)}m`;
     }
   }
   if(gameMode==="timelimit"){
     totalScore+=score;
-    total.textContent=`合計 ${totalScore}点`;
+    total.textContent=`${Math.round(d)}m,${score}点 / 合計 ${totalScore}点`;
     targetPos=generateTarget(currentPos.lat,currentPos.lon);
   }
 }
