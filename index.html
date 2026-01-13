@@ -305,21 +305,21 @@ function arrive(){
 
   if(gameMode==="free"){
     stopAll();
-    result.textContent=`${Math.round(d)}m / ${score}点`;
+    result.textContent=`${Math.round(d)}m先 / ${score}点`;
   }
   if(gameMode==="timeattack"){
     if(score===100){
       const t=((Date.now()-startTime)/1000).toFixed(1);
       submit("timeattack",Number(t));
       stopAll();
-      result.textContent=`成功！ ${t}秒`;
+      result.textContent=`成功！ ${t}秒 / ${Math.round(d)}m先`;
     } else {
-      stopAll(); result.textContent=`失敗… / ${Math.round(d)}m`;
+      stopAll(); result.textContent=`失敗… / ${Math.round(d)}m先`;
     }
   }
   if(gameMode==="timelimit"){
     totalScore+=score;
-    total.textContent=`${Math.round(d)}m,${score}点 / 合計 ${totalScore}点`;
+    total.textContent=`${Math.round(d)}m先,${score}点 / 合計 ${totalScore}点`;
     targetPos=generateTarget(currentPos.lat,currentPos.lon);
   }
 }
