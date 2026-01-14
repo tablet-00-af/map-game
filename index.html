@@ -236,6 +236,12 @@ function stopBGM(){
   bgm.currentTime = 0;
 }
 
+function playSE(src, volume = 0.8){
+  const se = new Audio(src);
+  se.volume = volume;
+  se.play();
+}
+
 /* ===== モード ===== */
 function selectMode(m){
   gameMode=m;
@@ -268,6 +274,8 @@ function stopAll(){
   targetPos=currentPos=gameMode=null;
   startTime=totalScore=0;
   ["distance","timer","total"].forEach(id=>document.getElementById(id).textContent="");
+
+  stopBGM();
 }
 
 /* ===== 開始 ===== */
@@ -338,8 +346,6 @@ function arrive(){
     total.textContent=`${Math.round(d)}m先,${score}点 / 合計 ${totalScore}点`;
     targetPos=generateTarget(currentPos.lat,currentPos.lon);
   }
-
-  stopBGM();
 }
 
 /* ===== GPS & コンパス ===== */
@@ -402,6 +408,6 @@ function calcBearing(a,b,c,d){
   )*180/Math.PI+360)%360;
 }
 </script>
-
+ifiei
 </body>
 </html>
