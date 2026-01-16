@@ -215,6 +215,7 @@ const db = firebase.firestore();
 let gameMode=null,targetPos=null,currentPos=null;
 let watchId=null,timerId=null;
 let deviceHeading=0,startTime=0,totalScore=0;
+let currentAngle = 0;
 const TIME_LIMIT=600;
 
 /* ===== 画面 ===== */
@@ -354,7 +355,12 @@ function startGPS(){
     currentPos={lat:p.coords.latitude,lon:p.coords.longitude};
     const d=calcDistance(currentPos.lat,currentPos.lon,targetPos.lat,targetPos.lon);
     const b=calcBearing(currentPos.lat,currentPos.lon,targetPos.lat,targetPos.lon);
-    arrow.style.transform=`translate(-50%, -100%) rotate(${b-deviceHeading}deg)`;
+    currentAngle = b - deviceHeading;
+    arrow.style.transform=`translate(-50%, -100%) rotate(${currentAngle}deg)`;
+  },
+  err => {
+    currentAngle = currentAngle + (Math.random() * 10);
+    arrow.style.transform=`translate(-50%, -100%) rotate(${currentAngle}deg)`;
   });
 }
 
@@ -373,7 +379,6 @@ function requestOrientation(){
     });
   }
 }
-
 /* ===== ランキング ===== */
 function submit(mode,value){
   db.collection("ranking").add({
