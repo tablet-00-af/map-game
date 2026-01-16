@@ -186,6 +186,7 @@ button.danger {
 <!-- ゲーム -->
 <div id="game" class="screen">
   <p id="status">---</p>
+  <p id="error"></p>
 
   <div id="compass">
     <div id="arrow"><div id="needle"></div></div>
@@ -339,7 +340,8 @@ function arrive(){
       stopAll();
       result.textContent=`成功！ ${t}秒 / ${Math.round(d)}m先`;
     } else {
-      stopAll(); result.textContent=`失敗… / ${Math.round(d)}m先`;
+      stopAll();
+      result.textContent=`失敗… / ${Math.round(d)}m先`;
     }
   }
   if(gameMode==="timelimit"){
@@ -352,6 +354,7 @@ function arrive(){
 /* ===== GPS & コンパス ===== */
 function startGPS(){
   watchId=navigator.geolocation.watchPosition(p=>{
+    error.textContent="";
     currentPos={lat:p.coords.latitude,lon:p.coords.longitude};
     const d=calcDistance(currentPos.lat,currentPos.lon,targetPos.lat,targetPos.lon);
     const b=calcBearing(currentPos.lat,currentPos.lon,targetPos.lat,targetPos.lon);
@@ -359,7 +362,8 @@ function startGPS(){
     arrow.style.transform=`translate(-50%, -100%) rotate(${currentAngle}deg)`;
   },
   err => {
-    currentAngle = currentAngle + (Math.random() * 10);
+    error.textContent="位置情報が取得できません";
+    currentAngle = currentAngle + (Math.random() * 360);
     arrow.style.transform=`translate(-50%, -100%) rotate(${currentAngle}deg)`;
   });
 }
