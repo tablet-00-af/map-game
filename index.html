@@ -147,7 +147,7 @@ button.danger {
   height: 16px;
   background: #38bdf8;
   border-radius: 50%;
-  box-shadow: 0 0 10px rgba(56,189,248,0.6);
+  box-shadow: 0 0 10px rgba(56,189,248,1);
 }
 
 /* ===== 表示 ===== */
@@ -165,7 +165,6 @@ button.danger {
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-</head>
 
 <body>
 
@@ -200,7 +199,12 @@ button.danger {
   <button class="danger" onclick="confirmQuit()">やめる</button>
 
   <p id="result"></p>
+
   <audio id="bgm" src="bgm.mp3" loop></audio>
+  <audio id="fail" src="fail.mp3"></audio>
+  <audio id="success" src="success.mp3"></audio>
+  <audio id="happy" src="happy.mp3"></audio>
+
 </div>
 
 <script>
@@ -225,23 +229,23 @@ function showScreen(id){
   document.getElementById(id).classList.add("active");
 }
 
-/* ===== BGM ======*/
+/* ===== BGM/効果音 ======*/
 function playBGM(){
   const bgm = document.getElementById("bgm");
   bgm.volume = 0.4; // 音量（0〜1）
   bgm.play();
 }
 
+function playSE(id){
+  const se = document.getElementById(id);
+  se.volume = 0.6;
+  se.play();
+}
+
 function stopBGM(){
   const bgm = document.getElementById("bgm");
   bgm.pause();
   bgm.currentTime = 0;
-}
-
-function playSE(src, volume = 0.8){
-  const se = new Audio(src);
-  se.volume = volume;
-  se.play();
 }
 
 /* ===== モード ===== */
@@ -349,6 +353,14 @@ function arrive(){
     total.textContent=`${Math.round(d)}m先,${score}点 / 合計 ${totalScore}点`;
     targetPos=generateTarget(currentPos.lat,currentPos.lon);
   }
+
+  if(score===100){
+    playSE("happy");
+  }else if(score > 0){
+    playSE("success");
+  }else{
+    playSE("fail");
+  }
 }
 
 /* ===== GPS & コンパス ===== */
@@ -364,7 +376,7 @@ function startGPS(){
   err => {
     error.textContent="位置情報が取得できません";
     currentAngle = currentAngle + (Math.random() * 360);
-    arrow.style.transform=`translate(-50%, -100%) rotate(${currentAngle}deg)`;
+    arrow.style.transform=`translate(-50%, -50%) rotate(${currentAngle}deg)`;
   });
 }
 
