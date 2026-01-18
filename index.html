@@ -102,11 +102,15 @@ button.danger {
     0 8px 16px rgba(0,0,0,0.5);
 }
 
-/* ランキング一位 */
+/* ランキング */
 .rank1{
   font-size: 1.4em;
   font-weight: bold;
   text-shadow: 0 0 12px rgba(255,215,0,0.8);
+}
+.rank2or3{
+  font-size: 1.2em;
+  font-weight: bold;
 }
 
 /* ===== コンパス ===== */
@@ -480,6 +484,8 @@ async function showRanking(mode){
 
       if (rank === 1) {
         row.classList.add("rank1");
+      } else if (rank === 2 || rank === 3) {
+        row.classList.add("rank2or3");
       }
 
       list.appendChild(row);
