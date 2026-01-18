@@ -102,6 +102,12 @@ button.danger {
     0 8px 16px rgba(0,0,0,0.5);
 }
 
+/* ランキング一位 */
+.rank1{
+  font-size: 1.4em;
+  font-weight: bold;
+}
+
 /* ===== コンパス ===== */
 #compass {
   width: 220px;
@@ -204,7 +210,16 @@ button.danger {
   <audio id="fail" src="fail.mp3"></audio>
   <audio id="success" src="success.mp3"></audio>
   <audio id="happy" src="happy.mp3"></audio>
+</div>
 
+<!-- ランキング -->
+<div id="rankingScreen" class="screen">
+  <p>ランキング</p>
+  <h2 id="rankingTitle"></h2>
+  <br><br>
+  <div id="rankingList"></div>
+  <br><br><br>
+  <button class="danger" onclick="backToMenu()">もどる</button>
 </div>
 
 <script>
@@ -222,6 +237,20 @@ let watchId=null,timerId=null;
 let deviceHeading=0,startTime=0,totalScore=0;
 let currentAngle = 0;
 const TIME_LIMIT=600;
+
+/* ===== 名前関係 ===== */
+const nameInput = document.getElementById("playerName");
+
+nameInput.addEventListener("input", () => {
+  localStorage.setItem("playerName", nameInput.value);
+});
+
+window.addEventListener("load", () => {
+  const savedName = localStorage.getItem("playerName");
+  if (savedName) {
+    document.getElementById("playerName").value = savedName;
+  }
+});
 
 /* ===== 画面 ===== */
 function showScreen(id){
@@ -395,15 +424,75 @@ function requestOrientation(){
     });
   }
 }
+
 /* ===== ランキング ===== */
-function submit(mode,value){
+function submit(mode, value){
+  const name =
+    localStorage.getItem("playerName") || "NO NAME";
+
   db.collection("ranking").add({
-    name: playerName.value || "NO NAME",
-    mode,value,time:Date.now()
+    name: name,
+    mode: mode,
+    value: Number(value),
+    time: Date.now()
   });
 }
+
 async function showRanking(mode){
-    alert("ランキングのデータベースに不具合が発生しているため、現在ランキングを表示できません");
+  showScreen("rankingScreen");
+
+  const title = document.getElementById("rankingTitle");
+  const list = document.getElementById("rankingList");
+
+  title.textContent =
+    mode === "timeattack" ? "タイムアタック" : "タイムリミット";
+
+  list.innerHTML = "読み込み中…";
+
+  try {
+    const order = mode === "timeattack" ? "asc" : "desc";
+
+    const snapshot = await db.collection("ranking")
+      .where("mode", "==", mode)
+      .orderBy("value", order)
+      .limit(5)
+      .get();
+
+    // 0件のとき
+    if (snapshot.empty) {
+      list.innerHTML = "まだ記録がありません";
+      return;
+    }
+
+    // 表示作成
+    list.innerHTML = "";
+    let rank = 1;
+
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      const row = document.createElement("div");
+
+      row.textContent =
+        mode === "timeattack"
+          ? `${rank}位 ${d.name} : ${d.value}s`
+          : `${rank}位 ${d.name} : ${d.value}点`;
+
+      if (rank === 1) {
+        row.classList.add("rank1");
+      }
+
+      list.appendChild(row);
+      rank++;
+    });
+
+  } catch (e) {
+    console.error(e);
+    list.innerHTML = "ランキングの取得に失敗しました";
+  }
+}
+
+function backToMenu(){
+  showScreen("menu");
 }
 
 /* ===== 計算 ===== */
