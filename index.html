@@ -471,16 +471,25 @@ async function showRanking(mode){
 
     // 表示作成
     list.innerHTML = "";
-    let rank = 1;
+
+    let rank = 0;
+    let beforeValue = null;
+    let index = 0;
 
     snapshot.forEach(doc => {
       const d = doc.data();
+      const value = Number(d.value);
       const row = document.createElement("div");
+
+      if (beforeValue === null || value !== beforeValue) {
+        rank = index + 1;
+      }
+      beforeValue = value;
 
       row.textContent =
         mode === "timeattack"
-          ? `${rank}位 ${d.name} : ${d.value}s`
-          : `${rank}位 ${d.name} : ${d.value}点`;
+          ? `${rank}位 ${d.name} : ${value}s`
+          : `${rank}位 ${d.name} : ${value}点`;
 
       if (rank === 1) {
         row.classList.add("rank1");
@@ -489,8 +498,9 @@ async function showRanking(mode){
       }
 
       list.appendChild(row);
-      rank++;
+      index++;
     });
+
 
   } catch (e) {
     console.error(e);
