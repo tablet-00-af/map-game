@@ -8,7 +8,6 @@
   <link rel="apple-touch-icon" href="favicon.png">
 </head>
 
-
 <style>
 /* ===== 全体 ===== */
 body {
@@ -113,6 +112,11 @@ button.danger {
   font-weight: bold;
 }
 
+/* ===== バージョン ===== */
+.ver {
+  text-align: right;
+}
+
 /* ===== コンパス ===== */
 #compass {
   width: 220px;
@@ -215,6 +219,7 @@ button.danger {
   <audio id="fail" src="fail.mp3"></audio>
   <audio id="success" src="success.mp3"></audio>
   <audio id="happy" src="happy.mp3"></audio>
+  <audio id="timeUp" src="timeup.mp3"></audio>
 </div>
 
 <!-- ランキング -->
@@ -226,6 +231,8 @@ button.danger {
   <br><br><br>
   <button class="danger" onclick="backToMenu()">もどる</button>
 </div>
+
+<p class="ver">v3.5.13</p>
 
 <script>
 /* ===== Firebase ===== */
@@ -355,7 +362,8 @@ function startTimer(){
       if(r<=0){
         submit("timelimit",totalScore);
         stopAll();
-        result.textContent=`終了！ ${totalScore}点`;
+        result.textContent=`タイムアップ！ ${totalScore}点`;
+        playSE("timeUp");
       }
     }
   },500);
